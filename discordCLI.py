@@ -41,18 +41,14 @@ def draw_menu(stdscr):
         # Declaration of strings
         title = "Discord CLI"[:width-1]
         subtitle = "Written by Nathan Withers"[:width-1]
-        with open("discordAscii60Wide.txt") as f:
+        with open("ascii60Wide.txt") as f:
                 content = f.readlines()
                 asciiArt = [x.strip() for x in content] 
-        keystr = "Last key pressed: {}".format(k)[:width-1]
         statusbarstr = "Press 'q' to exit | STATUS BAR | Pos: {}, {}".format(cursor_x, cursor_y)
-        if k == 0:
-            keystr = "No key press detected..."[:width-1]
 
         # Centering calculations
         start_x_title = int((width // 2) - (len(title) // 2) - len(title) % 2)
         start_x_subtitle = int((width // 2) - (len(subtitle) // 2) - len(subtitle) % 2)
-        start_x_keystr = int((width // 2) - (len(keystr) // 2) - len(keystr) % 2)
         start_x_art = int((width // 2) - (len(asciiArt[1]) // 2) - len(asciiArt[1]) %2)
         start_y = int((height // 2) - 2)
         start_y_art = 1
@@ -83,8 +79,6 @@ def draw_menu(stdscr):
             stdscr.addstr(start_y_art, start_x_art, line)
             start_y_art += 1
         stdscr.addstr(start_y + 1, start_x_subtitle, subtitle)
-        stdscr.addstr(start_y + 3, (width // 2) - 2, '-' * 4)
-        stdscr.addstr(start_y + 5, start_x_keystr, keystr)
         stdscr.move(cursor_y, cursor_x)
 
         # Refresh the screen

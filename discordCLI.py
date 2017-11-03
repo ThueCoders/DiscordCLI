@@ -1,5 +1,27 @@
 import sys,os
 import curses
+import json
+import aiofiles
+import discord
+import asyncio
+
+class Bot(discord.Client):
+    def __init__(self):
+        super(Bot, self).__init__()
+
+    async def on_ready(self):
+
+        print('Logged in as')
+        print(self.user.name)
+        print(self.user.id)
+        print('------')
+
+    async def on_message(self, message):
+        if message.author == self.user:
+            content = message.content  # type: str
+
+            if content.startswith('$test'):
+                await self.send_message(message.channel, 'hmmmm')
 
 def draw_menu(stdscr):
     k = 0
@@ -89,6 +111,15 @@ def draw_menu(stdscr):
 
 def main():
     curses.wrapper(draw_menu)
+    with open('config.json') as f:
+        config = json.load(f)
+
+    os.makedirs('tmp', exist_ok=True)
+
+    client = Bot()
+
+    client.run(config['token'], bot=False)
+
 
 if __name__ == "__main__":
     main()

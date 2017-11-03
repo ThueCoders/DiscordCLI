@@ -1,9 +1,12 @@
 import sys,os
+import threading
 import curses
 import json
 import aiofiles
 import discord
 import asyncio
+
+from curses.textpad import Textbox, rectangle
 
 class Bot(discord.Client):
     def __init__(self):
@@ -106,11 +109,25 @@ def draw_menu(stdscr):
         # Refresh the screen
         stdscr.refresh()
 
-        # Wait for next input
+        # wait for next input
         k = stdscr.getch()
 
+def textBoxTest(stdscr):
+    stdscr.addstr(0, 0, "Enter IM message: (hit Ctrl-G to send)")
+
+    editwin = curses.newwin(5,30, 2,1)
+    rectangle(stdscr, 1,0, 1+5+1, 1+30+1)
+    stdscr.refresh()
+
+    box = Textbox(editwin)
+
+    # Let the user edit until Ctrl-G is struck.
+    box.edit()
+
+    # Get resulting contents
+    message = box.gather()
+
 def main():
-    curses.wrapper(draw_menu)
     with open('config.json') as f:
         config = json.load(f)
 
@@ -118,8 +135,11 @@ def main():
 
     client = Bot()
 
-    client.run(config['token'], bot=False)
+    threading.Thread(target=lambda: client.run(config['token'], bot=False)).start()
 
+    threading.Thread(target=lambda: curses.wrapper(draw_menu)).start()
+
+    #curses.wrapper(textBoxTest)
 
 if __name__ == "__main__":
     main()

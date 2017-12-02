@@ -11,7 +11,7 @@ from curses.textpad import Textbox, rectangle
 class Bot(discord.Client):
     def __init__(self):
         super(Bot, self).__init__()
-
+    
     async def on_ready(self):
 
         self.user.name
@@ -27,10 +27,17 @@ class Bot(discord.Client):
             if content.startswith('$test'):
                 await self.send_message(message.channel, 'hmmmm')
 
+client = Bot()
+
+def draw_status_bar(stdscr, statusbarstr, width, height):
+    stdscr.attron(curses.color_pair(3))
+    stdscr.addstr(height-1, 0, statusbarstr)
+    stdscr.addstr(height-1, len(statusbarstr), " " * (width - len(statusbarstr) - 1))
+    stdscr.attroff(curses.color_pair(3))
+    stdscr.refresh()
+
 def draw_menu(stdscr):
     k = 0
-    cursor_x = 0
-    cursor_y = 0
 
     # Clear and refresh the screen for a blank canvas
     stdscr.clear()
@@ -44,45 +51,27 @@ def draw_menu(stdscr):
 
     # Loop where k is the last character pressed
     while (True):
-
+        
         if (k == ord('q')):
             statusbarstr = "Are you sure you want to exit? (N/y)"
-            # Render status bar
-            stdscr.attron(curses.color_pair(3))
-            stdscr.addstr(height-1, 0, statusbarstr)
-            stdscr.addstr(height-1, len(statusbarstr), " " * (width - len(statusbarstr) - 1))
-            stdscr.attroff(curses.color_pair(3))
-            stdscr.refresh()
+            draw_status_bar(stdscr, statusbarstr, width, height)
             k = stdscr.getch()
             if(k == ord('y') or k == ord('Y')):
+                client.logout()
+                client.close()
                 break
 
         # Initialization
         stdscr.clear()
         height, width = stdscr.getmaxyx()
-
-        if k == curses.KEY_DOWN:
-            cursor_y = cursor_y + 1
-        elif k == curses.KEY_UP:
-            cursor_y = cursor_y - 1
-        elif k == curses.KEY_RIGHT:
-            cursor_x = cursor_x + 1
-        elif k == curses.KEY_LEFT:
-            cursor_x = cursor_x - 1
-
-        cursor_x = max(0, cursor_x)
-        cursor_x = min(width-1, cursor_x)
-
-        cursor_y = max(0, cursor_y)
-        cursor_y = min(height-1, cursor_y)
-
+        
         # Declaration of strings
         title = "Discord CLI"[:width-1]
         subtitle = "Written by Nathan Withers"[:width-1]
         with open("ascii60Wide.txt") as f:
                 content = f.readlines()
                 asciiArt = [x.strip() for x in content] 
-        statusbarstr = "Press 'q' to exit | STATUS BAR | Pos: {}, {}".format(cursor_x, cursor_y)
+        statusbarstr = "Press 'q' to exit | 's' to choose a server | 't' as a filler. It doesn't do anything "
 
         # Centering calculations
         start_x_title = int((width // 2) - (len(title) // 2) - len(title) % 2)
@@ -96,10 +85,7 @@ def draw_menu(stdscr):
         stdscr.addstr(0, 0, whstr, curses.color_pair(1))
 
         # Render status bar
-        stdscr.attron(curses.color_pair(3))
-        stdscr.addstr(height-1, 0, statusbarstr)
-        stdscr.addstr(height-1, len(statusbarstr), " " * (width - len(statusbarstr) - 1))
-        stdscr.attroff(curses.color_pair(3))
+        draw_status_bar(stdscr, statusbarstr, width, height)
 
         # Turning on attributes for title
         stdscr.attron(curses.color_pair(2))
@@ -117,13 +103,14 @@ def draw_menu(stdscr):
             stdscr.addstr(start_y_art, start_x_art, line)
             start_y_art += 1
         stdscr.addstr(start_y + 1, start_x_subtitle, subtitle)
-        stdscr.move(cursor_y, cursor_x)
 
         # Refresh the screen
         stdscr.refresh()
 
         # wait for next input
         k = stdscr.getch()
+
+    curses.wrapper(textBoxTest)
 
 def textBoxTest(stdscr):
     stdscr.addstr(0, 0, "Enter IM message: (hit Ctrl-G to send)")
@@ -146,13 +133,9 @@ def main():
 
     #os.makedirs('tmp', exist_ok=True)
 
-    client = Bot()
-
-    threading.Thread(target=lambda: client.run(config['token'], bot=False)).start()
+    threading.Thread(target=lambda: client.start(config['token'], bot=False)).start()
 
     threading.Thread(target=lambda: curses.wrapper(draw_menu)).start()
-
-    #curses.wrapper(textBoxTest)
 
 if __name__ == "__main__":
     main()

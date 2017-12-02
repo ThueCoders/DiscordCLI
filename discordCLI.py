@@ -14,10 +14,11 @@ class Bot(discord.Client):
 
     async def on_ready(self):
 
-        print('Logged in as')
-        print(self.user.name)
-        print(self.user.id)
-        print('------')
+        self.user.name
+        #print('Logged in as')
+        #print(self.user.name)
+        #print(self.user.id)
+        #print('------')
 
     async def on_message(self, message):
         if message.author == self.user:
@@ -42,7 +43,19 @@ def draw_menu(stdscr):
     curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_WHITE)
 
     # Loop where k is the last character pressed
-    while (k != ord('q')):
+    while (True):
+
+        if (k == ord('q')):
+            statusbarstr = "Are you sure you want to exit? (N/y)"
+            # Render status bar
+            stdscr.attron(curses.color_pair(3))
+            stdscr.addstr(height-1, 0, statusbarstr)
+            stdscr.addstr(height-1, len(statusbarstr), " " * (width - len(statusbarstr) - 1))
+            stdscr.attroff(curses.color_pair(3))
+            stdscr.refresh()
+            k = stdscr.getch()
+            if(k == ord('y') or k == ord('Y')):
+                break
 
         # Initialization
         stdscr.clear()
@@ -131,7 +144,7 @@ def main():
     with open('config.json') as f:
         config = json.load(f)
 
-    os.makedirs('tmp', exist_ok=True)
+    #os.makedirs('tmp', exist_ok=True)
 
     client = Bot()
 

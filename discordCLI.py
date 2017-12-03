@@ -57,8 +57,6 @@ def draw_menu(stdscr):
             draw_status_bar(stdscr, statusbarstr, width, height)
             k = stdscr.getch()
             if(k == ord('y') or k == ord('Y')):
-                client.logout()
-                client.close()
                 break
 
         # Initialization
@@ -110,6 +108,7 @@ def draw_menu(stdscr):
         # wait for next input
         k = stdscr.getch()
 
+    client.logout()
     curses.wrapper(textBoxTest)
 
 def textBoxTest(stdscr):

@@ -29,13 +29,6 @@ class Bot(discord.Client):
 
 client = Bot()
 
-def draw_status_bar(stdscr, statusbarstr, width, height):
-    stdscr.attron(curses.color_pair(3))
-    stdscr.addstr(height-1, 0, statusbarstr)
-    stdscr.addstr(height-1, len(statusbarstr), " " * (width - len(statusbarstr) - 1))
-    stdscr.attroff(curses.color_pair(3))
-    stdscr.refresh()
-
 def draw_menu(stdscr):
     k = 0
 
@@ -59,8 +52,9 @@ def draw_menu(stdscr):
             k = stdscr.getch()
             if(k == ord('y') or k == ord('Y')):
                 break
-        else if(k == ord('s')):
+        elif(k == ord('s')):
             draw_server_list(stdscr)
+            k = stdscr.getch()
 
         # Initialization
         stdscr.clear()
@@ -89,6 +83,13 @@ def draw_menu(stdscr):
     # logout of discord after quitting
     client.logout()
     curses.wrapper(textBoxTest)
+
+def draw_status_bar(stdscr, statusbarstr, width, height):
+    stdscr.attron(curses.color_pair(3))
+    stdscr.addstr(height-1, 0, statusbarstr)
+    stdscr.addstr(height-1, len(statusbarstr), " " * (width - len(statusbarstr) - 1))
+    stdscr.attroff(curses.color_pair(3))
+    stdscr.refresh()
 
 def print_title(stdscr, width, start_y):
     title = "Discord CLI"[:width-1]
@@ -124,13 +125,24 @@ def print_ascii_art(stdscr, width):
         start_y_art += 1
 
 def draw_server_list(stdscr):
-    print("hi")
+    y = 1
+    x = 100
+    for server in client.servers:
+        stdscr.addstr(y, x, server.name)
+        y += 1
+        for channel in server.channels:
+            stdscr.addstr(y, x, ord(y) + ") " + channel.name)
+            y += 1
+    stdscr.refresh()
 
 def textBoxTest(stdscr):
     stdscr.addstr(0, 0, "Enter IM message: (hit Ctrl-G to send)")
-
-    editwin = curses.newwin(5,30, 2,1)
-    rectangle(stdscr, 1,0, 1+5+1, 1+30+1)
+    
+    width = 30
+    height = 5
+    
+    editwin = curses.newwin(height,width, 2,1)
+    rectangle(stdscr, 1,0, 1+height+1, 1+width+1)
     stdscr.refresh()
 
     box = Textbox(editwin)
@@ -150,6 +162,7 @@ def main():
     threading.Thread(target=lambda: client.start(config['token'], bot=False)).start()
 
     threading.Thread(target=lambda: curses.wrapper(draw_menu)).start()
+    
 
 if __name__ == "__main__":
     main()

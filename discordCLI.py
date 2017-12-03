@@ -52,64 +52,79 @@ def draw_menu(stdscr):
     # Loop where k is the last character pressed
     while (True):
         
+        # command logic
         if (k == ord('q')):
             statusbarstr = "Are you sure you want to exit? (N/y)"
             draw_status_bar(stdscr, statusbarstr, width, height)
             k = stdscr.getch()
             if(k == ord('y') or k == ord('Y')):
                 break
+        else if(k == ord('s')):
+            draw_server_list(stdscr)
 
         # Initialization
         stdscr.clear()
         height, width = stdscr.getmaxyx()
-        
-        # Declaration of strings
-        title = "Discord CLI"[:width-1]
-        subtitle = "Written by Nathan Withers"[:width-1]
-        with open("ascii60Wide.txt") as f:
-                content = f.readlines()
-                asciiArt = [x.strip() for x in content] 
-        statusbarstr = "Press 'q' to exit | 's' to choose a server | 't' as a filler. It doesn't do anything "
+        statusbarstr = "Press 'q' to exit | 's' to choose a server | 'p' to look at private messages"
 
         # Centering calculations
-        start_x_title = int((width // 2) - (len(title) // 2) - len(title) % 2)
-        start_x_subtitle = int((width // 2) - (len(subtitle) // 2) - len(subtitle) % 2)
-        start_x_art = int((width // 2) - (len(asciiArt[1]) // 2) - len(asciiArt[1]) %2)
         start_y = int((height // 2) - 2)
-        start_y_art = 1
-
-        # Rendering some text
-        whstr = "Width: {}, Height: {}".format(width, height)
-        stdscr.addstr(0, 0, whstr, curses.color_pair(1))
 
         # Render status bar
         draw_status_bar(stdscr, statusbarstr, width, height)
 
-        # Turning on attributes for title
-        stdscr.attron(curses.color_pair(2))
-        stdscr.attron(curses.A_BOLD)
+        # Print title and subtitle
+        print_title(stdscr, width, start_y)
+        print_sub_title(stdscr, width, start_y)
 
-        # Rendering title
-        stdscr.addstr(start_y, start_x_title, title)
+        # Print ascii art
+        print_ascii_art(stdscr, width)
 
-        # Turning off attributes for title
-        stdscr.attroff(curses.color_pair(2))
-        stdscr.attroff(curses.A_BOLD)
-
-        # Print rest of text
-        for line in asciiArt:
-            stdscr.addstr(start_y_art, start_x_art, line)
-            start_y_art += 1
-        stdscr.addstr(start_y + 1, start_x_subtitle, subtitle)
-
-        # Refresh the screen
+        # refresh 
         stdscr.refresh()
 
         # wait for next input
         k = stdscr.getch()
 
+    # logout of discord after quitting
     client.logout()
     curses.wrapper(textBoxTest)
+
+def print_title(stdscr, width, start_y):
+    title = "Discord CLI"[:width-1]
+    # centering calculation
+    start_x_title = int((width // 2) - (len(title) // 2) - len(title) % 2)
+    # setting text attributes
+    stdscr.attron(curses.color_pair(2))
+    stdscr.attron(curses.A_BOLD)
+    # print title
+    stdscr.addstr(start_y, start_x_title, title)
+    # unset text attributes
+    stdscr.attroff(curses.color_pair(2))
+    stdscr.attroff(curses.A_BOLD)
+
+def print_sub_title(stdscr, width, start_y):
+    subtitle = "Written by Nathan Withers"[:width-1]
+    # centering calculation
+    start_x_subtitle = int((width // 2) - (len(subtitle) // 2) - len(subtitle) % 2)
+    # print subtitle
+    stdscr.addstr(start_y + 1, start_x_subtitle, subtitle)
+
+def print_ascii_art(stdscr, width):
+    # read in ascii to list
+    with open("ascii60Wide.txt") as f:
+        content = f.readlines()
+        asciiArt = [x.strip() for x in content]
+    # centering calculation
+    start_x_art = int((width // 2) - (len(asciiArt[1]) // 2) - len(asciiArt[1]) %2)
+    start_y_art = 1
+    # print ascii art
+    for line in asciiArt:
+        stdscr.addstr(start_y_art, start_x_art, line)
+        start_y_art += 1
+
+def draw_server_list(stdscr):
+    print("hi")
 
 def textBoxTest(stdscr):
     stdscr.addstr(0, 0, "Enter IM message: (hit Ctrl-G to send)")

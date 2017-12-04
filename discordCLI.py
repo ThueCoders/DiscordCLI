@@ -13,8 +13,7 @@ class Bot(discord.Client):
         super(Bot, self).__init__()
     
     async def on_ready(self):
-
-        self.user.name
+        l = 1
         #print('Logged in as')
         #print(self.user.name)
         #print(self.user.id)
@@ -27,7 +26,6 @@ class Bot(discord.Client):
             if content.startswith('$test'):
                 await self.send_message(message.channel, 'hmmmm')
 
-client = Bot()
 
 def draw_menu(stdscr):
     k = 0
@@ -81,7 +79,7 @@ def draw_menu(stdscr):
         k = stdscr.getch()
 
     # logout of discord after quitting
-    client.logout()
+    logout()
     curses.wrapper(textBoxTest)
 
 def draw_status_bar(stdscr, statusbarstr, width, height):
@@ -125,15 +123,19 @@ def print_ascii_art(stdscr, width):
         start_y_art += 1
 
 def draw_server_list(stdscr):
-    y = 1
-    x = 100
+    y, x = 1, 100
     for server in client.servers:
         stdscr.addstr(y, x, server.name)
         y += 1
         for channel in server.channels:
-            stdscr.addstr(y, x, ord(y) + ") " + channel.name)
+            stdscr.addstr(y, x, chr(y + 64) + ") " + channel.name)
             y += 1
     stdscr.refresh()
+
+def logout():
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(client.logout())
+    loop.close()
 
 def textBoxTest(stdscr):
     stdscr.addstr(0, 0, "Enter IM message: (hit Ctrl-G to send)")
@@ -153,16 +155,18 @@ def textBoxTest(stdscr):
     # Get resulting contents
     message = box.gather()
 
+client = Bot()
+
 def main():
     with open('config.json') as f:
         config = json.load(f)
 
     #os.makedirs('tmp', exist_ok=True)
-
-    threading.Thread(target=lambda: client.start(config['token'], bot=False)).start()
-
     threading.Thread(target=lambda: curses.wrapper(draw_menu)).start()
-    
 
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(client.start(config['token'], bot=False))
+    loop.close()
+    
 if __name__ == "__main__":
     main()

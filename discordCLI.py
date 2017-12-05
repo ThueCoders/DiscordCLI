@@ -67,8 +67,8 @@ def draw_menu(stdscr):
             guilds = draw_server_list(stdscr)
             k = stdscr.getch()
             if(chr(k) in guilds):
-                print(guilds[chr(k)].name)
-
+                draw_channel_list(stdscr, guilds[chr(k)])
+                k = stdscr.getch()
             else:
                 k = stdscr.getch()
             k = stdscr.getch()
@@ -143,16 +143,37 @@ def print_ascii_art(stdscr, width):
         start_y_art += 1
 
 def draw_server_list(stdscr):
+    # dictionary of guilds
     guilds = {}
     y, x = 0, 1
     for server in client.servers:
         y += 1
+        # draw each guild with a letter for selection
         stdscr.addstr(y, x, chr(y + 64) + ") " + server.name)
+        # add guild to dictionary with selector letter as key
         guilds.update({chr(y + 96):server})
     height, width = stdscr.getmaxyx()
+    # update status bar
     draw_status_bar(stdscr, "Select a guild using " + chr(65) + "-" + chr(y + 64), height, width)
     stdscr.refresh()
     return guilds
+
+def draw_channel_list(stdscr, guild):
+    # dictionary of channels
+    channels = {}
+    y, x = 0, 1
+    stdscr.addstr(y + 1, x, guild.name)
+    for channel in guild.channels:
+        y += 1
+        # draw each channel with a letter for selection
+        stdscr.addstr(y + 1,x, chr(y + 64) + ") " + channel.name)
+        # add channel to dictionary with selector letter as key
+        channels.update({chr(y + 96):channel})
+    height, width = stdscr.getmaxyx()
+    # update status bar
+    draw_status_bar(stdscr, "Select a channel using " + chr(65) + "-" + chr(y + 64), height, width)
+    stdscr.refresh()
+    return channels
 
 def textBoxTest(stdscr):
     stdscr.addstr(0, 0, "Enter IM message: (hit Ctrl-G to send)")

@@ -1,4 +1,5 @@
 import sys,os
+import queue
 import threading
 import curses
 import json
@@ -8,16 +9,26 @@ import asyncio
 
 from curses.textpad import Textbox, rectangle
 
+command_queue = queue.Queue()
+
 class Bot(discord.Client):
     def __init__(self):
         super(Bot, self).__init__()
     
+    async def poll_queue(self):
+        while(command_queue.empty()):
+            continue
+        if(command_queue.get() == 'logout'):
+            await self.logout()
+        else:
+            await self.poll_queue()
+    
     async def on_ready(self):
-        l = 1
-        #print('Logged in as')
-        #print(self.user.name)
-        #print(self.user.id)
-        #print('------')
+        print('Logged in as')
+        print(self.user.name)
+        print(self.user.id)
+        print('------')
+        await self.poll_queue()
 
     async def on_message(self, message):
         if message.author == self.user:
@@ -26,6 +37,7 @@ class Bot(discord.Client):
             if content.startswith('$test'):
                 await self.send_message(message.channel, 'hmmmm')
 
+client = Bot()
 
 def draw_menu(stdscr):
     k = 0
@@ -46,9 +58,10 @@ def draw_menu(stdscr):
         # command logic
         if (k == ord('q')):
             statusbarstr = "Are you sure you want to exit? (N/y)"
-            draw_status_bar(stdscr, statusbarstr, width, height)
+            draw_status_bar(stdscr, statusbarstr, height, width)
             k = stdscr.getch()
             if(k == ord('y') or k == ord('Y')):
+                end_curses(stdscr)
                 break
         elif(k == ord('s')):
             draw_server_list(stdscr)
@@ -63,7 +76,7 @@ def draw_menu(stdscr):
         start_y = int((height // 2) - 2)
 
         # Render status bar
-        draw_status_bar(stdscr, statusbarstr, width, height)
+        draw_status_bar(stdscr, statusbarstr, height, width)
 
         # Print title and subtitle
         print_title(stdscr, width, start_y)
@@ -79,10 +92,10 @@ def draw_menu(stdscr):
         k = stdscr.getch()
 
     # logout of discord after quitting
-    logout()
-    curses.wrapper(textBoxTest)
+    command_queue.put('logout')
+    #curses.wrapper(textBoxTest)
 
-def draw_status_bar(stdscr, statusbarstr, width, height):
+def draw_status_bar(stdscr, statusbarstr, height, width):
     stdscr.attron(curses.color_pair(3))
     stdscr.addstr(height-1, 0, statusbarstr)
     stdscr.addstr(height-1, len(statusbarstr), " " * (width - len(statusbarstr) - 1))
@@ -123,26 +136,20 @@ def print_ascii_art(stdscr, width):
         start_y_art += 1
 
 def draw_server_list(stdscr):
-    y, x = 1, 100
+    y, x = 0, 1
     for server in client.servers:
-        stdscr.addstr(y, x, server.name)
         y += 1
-        for channel in server.channels:
-            stdscr.addstr(y, x, chr(y + 64) + ") " + channel.name)
-            y += 1
+        stdscr.addstr(y, x, chr(y + 64) + ") " + server.name)
+    height, width = stdscr.getmaxyx()
+    draw_status_bar(stdscr, "Select a guild using " + chr(65)+ "-" + chr(y + 64 ), height, width)
     stdscr.refresh()
-
-def logout():
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(client.logout())
-    loop.close()
 
 def textBoxTest(stdscr):
     stdscr.addstr(0, 0, "Enter IM message: (hit Ctrl-G to send)")
-    
+
     width = 30
     height = 5
-    
+
     editwin = curses.newwin(height,width, 2,1)
     rectangle(stdscr, 1,0, 1+height+1, 1+width+1)
     stdscr.refresh()
@@ -155,7 +162,18 @@ def textBoxTest(stdscr):
     # Get resulting contents
     message = box.gather()
 
-client = Bot()
+def start_curses():
+    stdscr = curses.initscr()
+    curses.noecho()
+    curses.cbreak()
+    stdscr.keypad(True)
+    return stdscr
+
+def end_curses(stdscr):
+    curses.nocbreak()
+    stdscr.keypad(False)
+    curses.echo()
+    curses.endwin()
 
 def main():
     with open('config.json') as f:
@@ -163,10 +181,9 @@ def main():
 
     #os.makedirs('tmp', exist_ok=True)
     threading.Thread(target=lambda: curses.wrapper(draw_menu)).start()
-
     loop = asyncio.get_event_loop()
     loop.run_until_complete(client.start(config['token'], bot=False))
     loop.close()
-    
-if __name__ == "__main__":
+
+if __name__ == '__main__':
     main()

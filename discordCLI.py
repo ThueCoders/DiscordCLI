@@ -1,11 +1,13 @@
-import sys,os
+import sys
+import os
 import queue
 import threading
 import curses
 import json
-import aiofiles
 import discord
+from discord import ChannelType
 import asyncio
+import aiofiles
 
 from curses.textpad import Textbox, rectangle
 
@@ -24,10 +26,10 @@ class Bot(discord.Client):
             await self.poll_queue()
     
     async def on_ready(self):
-        print('Logged in as')
-        print(self.user.name)
-        print(self.user.id)
-        print('------')
+        #print('Logged in as')
+        #print(self.user.name)
+        #print(self.user.id)
+        #print('------')
         await self.poll_queue()
 
     async def on_message(self, message):
@@ -46,6 +48,7 @@ def draw_menu(stdscr):
     stdscr.clear()
     stdscr.refresh()
 
+    height, width = stdscr.getmaxyx()
     # Start colors in curses
     curses.start_color()
     curses.init_pair(1, curses.COLOR_CYAN, curses.COLOR_BLACK)
@@ -53,45 +56,31 @@ def draw_menu(stdscr):
     curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_WHITE)
 
     # Loop where k is the last character pressed
-    while (True):
-        
+    while True: 
         # command logic
-        if (k == ord('q')):
+        if k == ord('q'):
             statusbarstr = "Are you sure you want to exit? (N/y)"
             draw_status_bar(stdscr, statusbarstr, height, width)
             k = stdscr.getch()
-            if(k == ord('y') or k == ord('Y')):
+            if k == ord('y') or k == ord('Y'):
                 end_curses(stdscr)
                 break
-        elif(k == ord('s')):
-            guilds = draw_server_list(stdscr)
+        elif k == ord('s'):
+            guilds = draw_server_list(stdscr, height, width)
             k = stdscr.getch()
-            if(chr(k) in guilds):
-                draw_channel_list(stdscr, guilds[chr(k)])
+            if chr(k) in guilds:
+                draw_splash_screen(stdscr, height, width)
+                draw_channel_list(stdscr, guilds[chr(k)], height, width)
                 k = stdscr.getch()
             else:
                 k = stdscr.getch()
             k = stdscr.getch()
-        elif(k == ord('p')):
-            print("stuff")
+        elif k == ord('p'):
+            draw_private_channels(stdscr, height, width)
+            k = stdscr.getch()
 
-        # Initialization
-        stdscr.clear()
-        height, width = stdscr.getmaxyx()
-        statusbarstr = "Press 'q' to exit | 's' to choose a server | 'p' to look at private messages"
-
-        # Render status bar
-        draw_status_bar(stdscr, statusbarstr, height, width)
-
-        # Print ascii art
-        start_y = print_ascii_art(stdscr, width)
-
-        # Print title and subtitle
-        print_title(stdscr, width, start_y)
-        print_sub_title(stdscr, width, start_y)
-        
-        # refresh 
-        stdscr.refresh()
+        # redraw splash screen
+        draw_splash_screen(stdscr, height, width)
 
         # wait for next input
         k = stdscr.getch()
@@ -125,7 +114,7 @@ def print_sub_title(stdscr, width, start_y):
     # centering calculation
     start_x_subtitle = int((width // 2) - (len(subtitle) // 2) - len(subtitle) % 2)
     # print subtitle
-    stdscr.addstr(start_y + 1, start_x_subtitle, subtitle)
+    stdscr.addstr(start_y, start_x_subtitle, subtitle)
 
 def print_ascii_art(stdscr, width):
     # read in ascii to list
@@ -141,7 +130,25 @@ def print_ascii_art(stdscr, width):
         start_y_art += 1
     return start_y_art
 
-def draw_server_list(stdscr):
+def draw_splash_screen(stdscr, height, width):
+    # Initialization
+    stdscr.clear()
+    statusbarstr = "Press 'q' to exit | 's' to choose a server | 'p' to look at private messages"
+
+    # Render status bar
+    draw_status_bar(stdscr, statusbarstr, height, width)
+
+    # Print ascii art
+    start_y = print_ascii_art(stdscr, width)
+
+    # Print title and subtitle
+    print_title(stdscr, width, start_y + 5)
+    print_sub_title(stdscr, width, start_y + 6)
+    
+    # refresh 
+    stdscr.refresh()
+
+def draw_server_list(stdscr, height, width):
     # dictionary of guilds
     guilds = {}
     y, x = 0, 1
@@ -151,37 +158,43 @@ def draw_server_list(stdscr):
         stdscr.addstr(y, x, chr(y + 64) + ") " + server.name)
         # add guild to dictionary with selector letter as key
         guilds.update({chr(y + 96):server})
-    height, width = stdscr.getmaxyx()
     # update status bar
     draw_status_bar(stdscr, "Select a guild using " + chr(65) + "-" + chr(y + 64), height, width)
     stdscr.refresh()
     return guilds
 
-def draw_channel_list(stdscr, guild):
+def draw_channel_list(stdscr, guild, height, width):
     # dictionary of channels
     channels = {}
     y, x = 0, 1
     stdscr.addstr(y + 1, x, guild.name)
     for channel in guild.channels:
-        y += 1
-        # draw each channel with a letter for selection
-        stdscr.addstr(y + 1,x, chr(y + 64) + ") " + channel.name)
-        # add channel to dictionary with selector letter as key
-        channels.update({chr(y + 96):channel})
-    height, width = stdscr.getmaxyx()
+        if channel.type is ChannelType.text:
+            if channel.permissions_for(channel.server.me).read_message_history:
+                y += 1
+                # draw each channel with a letter for selection
+                stdscr.addstr(y + 1,x, chr(y + 64) + ") " + channel.name)
+                # add channel to dictionary with selector letter as key
+                channels.update({chr(y + 96):channel})
     # update status bar
     draw_status_bar(stdscr, "Select a channel using " + chr(65) + "-" + chr(y + 64), height, width)
     stdscr.refresh()
     return channels
 
-def draw_channel_list(stdscr):
+def draw_private_channels(stdscr, height, width):
+    # dictionary of channels
+    channels = {}
     y, x = 0, 1
-    for server in client.servers:
+    for channel in client.private_channels:
         y += 1
-        stdscr.addstr(y, x, chr(y + 64) + ") " + server.name)
-    height, width = stdscr.getmaxyx()
-    draw_status_bar(stdscr, "Select a guild using " + chr(65)+ "-" + chr(y + 64 ), height, width)
+        # draw each channel with a letter for selection
+        stdscr.addstr(y,x, chr(y + 64) + ") " + (channel.user.name if channel.name is None else channel.name))
+        # add channel to dictionary with selector letter as key
+        channels.update({chr(y + 96):channel})
+    # update status bar
+    draw_status_bar(stdscr, "Select a channel using " + chr(65) + "-" + chr(y + 64), height, width)
     stdscr.refresh()
+    return channels
 
 def textBoxTest(stdscr):
     stdscr.addstr(0, 0, "Enter IM message: (hit Ctrl-G to send)")

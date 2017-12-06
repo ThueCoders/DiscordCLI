@@ -80,18 +80,16 @@ def draw_menu(stdscr):
         height, width = stdscr.getmaxyx()
         statusbarstr = "Press 'q' to exit | 's' to choose a server | 'p' to look at private messages"
 
-        # Centering calculations
-        start_y = int((height // 2) - 2)
-
         # Render status bar
         draw_status_bar(stdscr, statusbarstr, height, width)
+
+        # Print ascii art
+        start_y = print_ascii_art(stdscr, width)
 
         # Print title and subtitle
         print_title(stdscr, width, start_y)
         print_sub_title(stdscr, width, start_y)
-        # Print ascii art
-        print_ascii_art(stdscr, width)
-
+        
         # refresh 
         stdscr.refresh()
 
@@ -141,6 +139,7 @@ def print_ascii_art(stdscr, width):
     for line in asciiArt:
         stdscr.addstr(start_y_art, start_x_art, line)
         start_y_art += 1
+    return start_y_art
 
 def draw_server_list(stdscr):
     # dictionary of guilds

@@ -70,10 +70,10 @@ def draw_menu(stdscr):
             k = stdscr.getch()
             if chr(k) in guilds:
                 draw_splash_screen(stdscr, height, width)
-                draw_channel_list(stdscr, guilds[chr(k)], height, width)
+                channels = draw_channel_list(stdscr, guilds[chr(k)], height, width)
                 k = stdscr.getch()
                 if chr(k) in channels:
-                    draw_messages(stdscr, channel[chr(k)], height, width)
+                    draw_messages(stdscr, channels[chr(k)], height, width)
                     k = stdscr.getch()
         elif k == ord('p'):
             groups = draw_private_channels(stdscr, height, width)
@@ -94,7 +94,11 @@ def draw_menu(stdscr):
     #curses.wrapper(textBoxTest)
 
 def draw_messages(stdscr, channel, height, width):
+    statusbarstr = "Are you sure you want to exit? (N/y)"
+    draw_status_bar(stdscr, statusbarstr, height, width)
     box = draw_text_box(stdscr, height, width)
+
+    logs = yield from client.logs_from(channel, limit=20)
 
     # Let the user edit until Ctrl-G is struck.
     box.edit()

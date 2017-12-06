@@ -72,9 +72,16 @@ def draw_menu(stdscr):
                 draw_splash_screen(stdscr, height, width)
                 draw_channel_list(stdscr, guilds[chr(k)], height, width)
                 k = stdscr.getch()
+                if chr(k) in channels:
+                    draw_messages(stdscr, channel[chr(k)], height, width)
+                    k = stdscr.getch()
         elif k == ord('p'):
-            draw_private_channels(stdscr, height, width)
+            groups = draw_private_channels(stdscr, height, width)
             k = stdscr.getch()
+            if chr(k) in groups:
+                draw_messages(stdscr, groups[chr(k)], height, width)
+                k = stdscr.getch()
+
 
         # redraw splash screen
         draw_splash_screen(stdscr, height, width)
@@ -85,6 +92,18 @@ def draw_menu(stdscr):
     # logout of discord after quitting
     command_queue.put('logout')
     #curses.wrapper(textBoxTest)
+
+def draw_messages(stdscr, channel, height, width):
+    box = draw_text_box(stdscr, height, width)
+
+    # Let the user edit until Ctrl-G is struck.
+    box.edit()
+
+    # Get resulting contents
+    message = box.gather()
+
+    print(message)
+    stdscr.getch()
 
 def draw_status_bar(stdscr, statusbarstr, height, width):
     stdscr.attron(curses.color_pair(3))
@@ -193,7 +212,7 @@ def draw_private_channels(stdscr, height, width):
     stdscr.refresh()
     return channels
 
-def textBoxTest(stdscr):
+def draw_text_box(stdscr, height, width):
     stdscr.addstr(0, 0, "Enter IM message: (hit Ctrl-G to send)")
 
     width = 30
@@ -203,13 +222,7 @@ def textBoxTest(stdscr):
     rectangle(stdscr, 1,0, 1+height+1, 1+width+1)
     stdscr.refresh()
 
-    box = Textbox(editwin)
-
-    # Let the user edit until Ctrl-G is struck.
-    box.edit()
-
-    # Get resulting contents
-    message = box.gather()
+    return Textbox(editwin)
 
 def end_curses(stdscr):
     curses.nocbreak()

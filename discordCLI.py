@@ -144,6 +144,15 @@ def draw_server_list(stdscr):
     draw_status_bar(stdscr, "Select a guild using " + chr(65)+ "-" + chr(y + 64 ), height, width)
     stdscr.refresh()
 
+def draw_channel_list(stdscr):
+    y, x = 0, 1
+    for server in client.servers:
+        y += 1
+        stdscr.addstr(y, x, chr(y + 64) + ") " + server.name)
+    height, width = stdscr.getmaxyx()
+    draw_status_bar(stdscr, "Select a guild using " + chr(65)+ "-" + chr(y + 64 ), height, width)
+    stdscr.refresh()
+
 def textBoxTest(stdscr):
     stdscr.addstr(0, 0, "Enter IM message: (hit Ctrl-G to send)")
 

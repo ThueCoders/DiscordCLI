@@ -72,9 +72,6 @@ def draw_menu(stdscr):
                 draw_splash_screen(stdscr, height, width)
                 draw_channel_list(stdscr, guilds[chr(k)], height, width)
                 k = stdscr.getch()
-            else:
-                k = stdscr.getch()
-            k = stdscr.getch()
         elif k == ord('p'):
             draw_private_channels(stdscr, height, width)
             k = stdscr.getch()
@@ -213,13 +210,6 @@ def textBoxTest(stdscr):
 
     # Get resulting contents
     message = box.gather()
-
-def start_curses():
-    stdscr = curses.initscr()
-    curses.noecho()
-    curses.cbreak()
-    stdscr.keypad(True)
-    return stdscr
 
 def end_curses(stdscr):
     curses.nocbreak()

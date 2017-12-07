@@ -17,20 +17,21 @@ class Bot(discord.Client):
     def __init__(self):
         super(Bot, self).__init__()
     
-    async def poll_queue(self):
-        while(command_queue.empty()):
-            continue
-        if(command_queue.get() == 'logout'):
-            await self.logout()
-        else:
-            await self.poll_queue()
+    #async def poll_queue(self):
+    #    while(command_queue.empty()):
+    #        continue
+    #    if(command_queue.get() == 'logout'):
+    #        await self.logout()
+    #    else:
+    #        await self.poll_queue()
     
     async def on_ready(self):
         #print('Logged in as')
         #print(self.user.name)
         #print(self.user.id)
         #print('------')
-        await self.poll_queue()
+        #await self.poll_queue()
+        x = 1
 
     async def on_message(self, message):
         if message.author == self.user:
@@ -63,6 +64,7 @@ def draw_menu(stdscr):
             draw_status_bar(stdscr, statusbarstr, height, width)
             k = stdscr.getch()
             if k == ord('y') or k == ord('Y'):
+                client.loop.create_task(client.logout)
                 end_curses(stdscr)
                 break
         elif k == ord('s'):
@@ -73,15 +75,15 @@ def draw_menu(stdscr):
                 channels = draw_channel_list(stdscr, guilds[chr(k)], height, width)
                 k = stdscr.getch()
                 if chr(k) in channels:
-                    draw_messages(stdscr, channels[chr(k)], height, width)
+                    bot.loop.create_task(draw_messages(stdscr, channels[chr(k)], height, width))
                     k = stdscr.getch()
         elif k == ord('p'):
             groups = draw_private_channels(stdscr, height, width)
             k = stdscr.getch()
             if chr(k) in groups:
-                draw_messages(stdscr, groups[chr(k)], height, width)
+                print('test')
+                client.loop.create_task(draw_messages(stdscr, groups[chr(k)], height, width))
                 k = stdscr.getch()
-
 
         # redraw splash screen
         draw_splash_screen(stdscr, height, width)
@@ -90,15 +92,21 @@ def draw_menu(stdscr):
         k = stdscr.getch()
 
     # logout of discord after quitting
-    command_queue.put('logout')
+    #command_queue.put('logout')
     #curses.wrapper(textBoxTest)
 
-def draw_messages(stdscr, channel, height, width):
-    statusbarstr = "Are you sure you want to exit? (N/y)"
+async def draw_messages(stdscr, channel, height, width):
+    draw_splash_screen(stdscr, height, width)
+    statusbarstr = "CTRL+backspace to backspace | CTRL+G sends message"
     draw_status_bar(stdscr, statusbarstr, height, width)
     box = draw_text_box(stdscr, height, width)
 
-    logs = yield from client.logs_from(channel, limit=20)
+    count = 0
+    async for message in client.logs_from(channel, limit=20):
+        count += 1
+        stdscr.addstr(count, 1, "{}: {}".format(message.author, message.content))
+
+    k = stdscr.getch()
 
     # Let the user edit until Ctrl-G is struck.
     box.edit()
@@ -107,7 +115,7 @@ def draw_messages(stdscr, channel, height, width):
     message = box.gather()
 
     print(message)
-    stdscr.getch()
+    k = stdscr.getch()
 
 def draw_status_bar(stdscr, statusbarstr, height, width):
     stdscr.attron(curses.color_pair(3))
@@ -219,11 +227,8 @@ def draw_private_channels(stdscr, height, width):
 def draw_text_box(stdscr, height, width):
     stdscr.addstr(0, 0, "Enter IM message: (hit Ctrl-G to send)")
 
-    width = 30
-    height = 5
-
-    editwin = curses.newwin(height,width, 2,1)
-    rectangle(stdscr, 1,0, 1+height+1, 1+width+1)
+    editwin = curses.newwin(5, 30, 1, 1)
+    rectangle(stdscr, 1, 0, 1+5+1, 1+30+1)
     stdscr.refresh()
 
     return Textbox(editwin)

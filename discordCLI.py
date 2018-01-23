@@ -40,6 +40,7 @@ class Bot(discord.Client):
                 await self.send_message(message.channel, 'hmmmm')
 
 client = Bot()
+commands = {0, ord('q'), ord('s'), ord('p')}
 
 def draw_menu(stdscr):
     k = 0
@@ -56,15 +57,18 @@ def draw_menu(stdscr):
     curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_WHITE)
 
     # Loop where k is the last character pressed
-    while True: 
+    while True:
         # command logic
         if k == ord('q'):
             statusbarstr = "Are you sure you want to exit? (N/y)"
             draw_status_bar(stdscr, statusbarstr, height, width)
             k = stdscr.getch()
-            if k == ord('y') or k == ord('Y'):
+            if k == ord('y'):
                 end_curses(stdscr)
                 break
+            else:
+                # redraw splash screen
+                draw_splash_screen(stdscr, height, width)
         elif k == ord('s'):
             guilds = draw_server_list(stdscr, height, width)
             k = stdscr.getch()
@@ -79,8 +83,9 @@ def draw_menu(stdscr):
             draw_private_channels(stdscr, height, width)
             k = stdscr.getch()
 
-        # redraw splash screen
-        draw_splash_screen(stdscr, height, width)
+        if k in commands:
+            # redraw splash screen
+            draw_splash_screen(stdscr, height, width)
 
         # wait for next input
         k = stdscr.getch()

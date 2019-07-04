@@ -239,7 +239,7 @@ def main():
     #os.makedirs('tmp', exist_ok=True)
     threading.Thread(target=lambda: curses.wrapper(draw_menu)).start()
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(client.start(config['token'], bot=False))
+    loop.run_until_complete(client.start(config['user-token'], bot=False))
     loop.close()
 
 if __name__ == '__main__':

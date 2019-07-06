@@ -3,22 +3,22 @@ package main
 import (
 	"fmt"
 	"os"
-    "log"
     "strings"
-	"os/signal"
 	"syscall"
-    "encoding/json"
+
     "io/ioutil"
+	"os/signal"
+    "encoding/json"
 
 	"github.com/bwmarrin/discordgo"
     "github.com/jroimartin/gocui"
+    "github.com/ThueCoders/DiscordCLI/logger"
 )
 
 const delta = 1
 
-// Variables used for command line parameters
 var (
-	Token string
+	token string
 
 	views   = []string{}
 	curView = -1
@@ -26,38 +26,21 @@ var (
 )
 
 func main() {
+    logger.Log.Printf("pid=%d", os.Getpid())
 
-    configFile, err := os.Open("config.json")
-    if (err != nil) {
-        fmt.Println(err)
-    }
-    byteValue, _ := ioutil.ReadAll(configFile)
-    configFile.Close()
-    var result map[string]interface{}
-    json.Unmarshal([]byte(byteValue), &result)
-    Token = result["user-token"].(string)
+    go initGocui()
 
-	dg, err := discordgo.New(Token)
-	if err != nil {
-		fmt.Println("error creating Discord session,", err)
-		return
-	}
+    go initBot()
 
-	dg.AddHandler(messageCreate)
-	// dg.AddHandler(channelUpdate)
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
+	<-sc
+}
 
-	err = dg.Open()
-    defer dg.Close()
-	if err != nil {
-		fmt.Println("error opening connection,", err)
-		return
-	}
-
-    // gocui
-
+func initGocui() {
 	g, err := gocui.NewGui(gocui.OutputNormal)
 	if err != nil {
-		log.Panicln(err)
+		logger.Log.Panicln(err)
 	}
 	defer g.Close()
 
@@ -67,22 +50,44 @@ func main() {
 	g.SetManagerFunc(layout)
 
 	if err := initKeybindings(g); err != nil {
-		log.Panicln(err)
+		logger.Log.Panicln(err)
 	}
 	if err := newView(g); err != nil {
-		log.Panicln(err)
+		logger.Log.Panicln(err)
 	}
 
 	if err := g.MainLoop(); err != nil && err != gocui.ErrQuit {
-		log.Panicln(err)
+		logger.Log.Panicln(err)
+	}
+}
+
+func initBot() (*discordgo.Session, error) {
+    configFile, err := os.Open("config.json")
+    if (err != nil) {
+        logger.Log.Println(err)
+    }
+    byteValue, _ := ioutil.ReadAll(configFile)
+    configFile.Close()
+    var result map[string]interface{}
+    json.Unmarshal([]byte(byteValue), &result)
+    token = result["user-token"].(string)
+
+	dg, err := discordgo.New(token)
+	if err != nil {
+		logger.Log.Println("error creating Discord session,", err)
+		return nil, err
 	}
 
-    // go cui end
+	dg.AddHandler(messageCreate)
+	// dg.AddHandler(channelUpdate)
 
-	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
-	sc := make(chan os.Signal, 1)
-	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
-	<-sc
+	err = dg.Open()
+    defer dg.Close()
+	if err != nil {
+		logger.Log.Println("error opening connection,", err)
+		return nil, err
+	}
+    return dg, nil
 }
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {

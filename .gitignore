@@ -1,2 +1,3 @@
-*.json
+config.toml
 info.log
+DiscordCLI

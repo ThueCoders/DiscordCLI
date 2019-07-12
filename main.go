@@ -3,38 +3,44 @@ package main
 import (
 	"fmt"
 	"os"
-    "strings"
-	"syscall"
+	"strings"
 
-    "io/ioutil"
-	"os/signal"
-    "encoding/json"
+	"encoding/json"
+	"io/ioutil"
 
-	"github.com/bwmarrin/discordgo"
-    "github.com/jroimartin/gocui"
-    "github.com/ThueCoders/DiscordCLI/logger"
+	"github.com/ThueCoders/DiscordCLI/logger"
+    "github.com/ThueCoders/DiscordCLI/panels"
+	"github.com/ThueCoders/discordgo"
+    "github.com/BurntSushi/toml"
+	"github.com/jroimartin/gocui"
 )
 
-const delta = 1
+const delta          = 1
 
 var (
 	token string
+
+	dg *discordgo.Session
 
 	views   = []string{}
 	curView = -1
 	idxView = 0
 )
 
-func main() {
-    logger.Log.Printf("pid=%d", os.Getpid())
+type Config struct {
 
-    go initGocui()
+}
 
-    go initBot()
+type keybind struct {
 
-	sc := make(chan os.Signal, 1)
-	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
-	<-sc
+}
+
+func init() {
+    var conf Config
+    if _, err := toml.Decode("config.toml", &conf); err != nil {
+        logger.Log.Println(err)
+    }
+	token = conf.userToken
 }
 
 func initGocui() {
@@ -52,7 +58,12 @@ func initGocui() {
 	if err := initKeybindings(g); err != nil {
 		logger.Log.Panicln(err)
 	}
+
 	if err := newView(g); err != nil {
+		logger.Log.Panicln(err)
+	}
+
+	if err = panels.MakePrompt(g); err != nil {
 		logger.Log.Panicln(err)
 	}
 
@@ -62,15 +73,6 @@ func initGocui() {
 }
 
 func initBot() (*discordgo.Session, error) {
-    configFile, err := os.Open("config.json")
-    if (err != nil) {
-        logger.Log.Println(err)
-    }
-    byteValue, _ := ioutil.ReadAll(configFile)
-    configFile.Close()
-    var result map[string]interface{}
-    json.Unmarshal([]byte(byteValue), &result)
-    token = result["user-token"].(string)
 
 	dg, err := discordgo.New(token)
 	if err != nil {
@@ -82,16 +84,28 @@ func initBot() (*discordgo.Session, error) {
 	// dg.AddHandler(channelUpdate)
 
 	err = dg.Open()
-    defer dg.Close()
 	if err != nil {
 		logger.Log.Println("error opening connection,", err)
 		return nil, err
 	}
-    return dg, nil
+	return dg, nil
+}
+
+func main() {
+	dg, err := initBot()
+	if err != nil {
+		logger.Log.Println(err)
+	} else {
+		defer dg.Close()
+	}
+	initGocui()
 }
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if m.Author.ID == s.State.User.ID {
+		if m.Content == "ping" {
+			s.ChannelMessageSend(m.ChannelID, "Pong!")
+		}
 		return
 	}
 	if m.Content == "ping" {
@@ -108,6 +122,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 func layout(g *gocui.Gui) error {
 	maxX, _ := g.Size()
 	v, err := g.SetView("help", maxX-25, 0, maxX-1, 9)
+	v0, err := g.SetView("test", 50, 0, maxX-50, 9)
 	if err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
@@ -116,15 +131,24 @@ func layout(g *gocui.Gui) error {
 		fmt.Fprintln(v, "Space: New View")
 		fmt.Fprintln(v, "Tab: Next View")
 		fmt.Fprintln(v, "← ↑ → ↓: Move View")
-		fmt.Fprintln(v, "Backspace: Delete View")
+		fmt.Fprintln(v, "^D: Delete View")
 		fmt.Fprintln(v, "t: Set view on top")
 		fmt.Fprintln(v, "b: Set view on bottom")
 		fmt.Fprintln(v, "^C: Exit")
+		fmt.Fprintln(v0, "test")
 	}
 	return nil
 }
 
-func initKeybindings(g *gocui.Gui) error {
+func initKeybindings(g *gocui.Gui, keybindings []keybind) error {
+    for _, key := range keybindings {
+        switch keybind.name {
+            case "viewUp":
+                if err := g.SetKeybinding(keybind.view, keybind.key, keybind.mod, moveViewUp) {
+                    return err
+                }
+        }
+    }
 	if err := g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone,
 		func(g *gocui.Gui, v *gocui.View) error {
 			return gocui.ErrQuit
@@ -137,7 +161,7 @@ func initKeybindings(g *gocui.Gui) error {
 		}); err != nil {
 		return err
 	}
-	if err := g.SetKeybinding("", gocui.KeyBackspace2, gocui.ModNone,
+	if err := g.SetKeybinding("", gocui.KeyCtrlD, gocui.ModNone,
 		func(g *gocui.Gui, v *gocui.View) error {
 			return delView(g)
 		}); err != nil {
@@ -249,3 +273,4 @@ func moveView(g *gocui.Gui, v *gocui.View, dx, dy int) error {
 	}
 	return nil
 }
+

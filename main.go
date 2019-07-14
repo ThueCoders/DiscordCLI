@@ -2,23 +2,28 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
-	"encoding/json"
+	"go/build"
+
 	"io/ioutil"
 
-	"github.com/ThueCoders/DiscordCLI/logger"
-    "github.com/ThueCoders/DiscordCLI/panels"
+	"github.com/ThueCoders/DiscordCLI/panels"
 	"github.com/ThueCoders/discordgo"
-    "github.com/BurntSushi/toml"
 	"github.com/jroimartin/gocui"
+	toml "github.com/pelletier/go-toml"
 )
 
-const delta          = 1
+const delta = 1
 
 var (
+	conf Config
+
 	token string
+
+	logger *log.Logger
 
 	dg *discordgo.Session
 
@@ -27,26 +32,40 @@ var (
 	idxView = 0
 )
 
-type Config struct {
-
+type Keybind struct {
+	Name string         `toml:"name"`
+	View string         `toml:"view"`
+	Key  gocui.Key      `toml:"key"`
+	Mod  gocui.Modifier `toml:"mod"`
 }
 
-type keybind struct {
-
+type Config struct {
+	BotToken  string    `toml:"botToken"`
+	UserToken string    `toml:"userToken"`
+	LogPath   string    `toml:"logPath"`
+	Keybinds  []Keybind `toml:"keybind"`
 }
 
 func init() {
-    var conf Config
-    if _, err := toml.Decode("config.toml", &conf); err != nil {
-        logger.Log.Println(err)
-    }
-	token = conf.userToken
+	var contents, err = ioutil.ReadFile("config.toml")
+	if err != nil {
+		log.Println(err)
+	}
+	toml.Unmarshal(contents, &conf)
+	token = conf.UserToken
+	var file, err1 = os.OpenFile(strings.Join([]string{build.Default.GOPATH, conf.LogPath}, ""), os.O_APPEND|os.O_WRONLY, 0664)
+	if err1 != nil {
+		log.Println(err1)
+	}
+	logger = log.New(file, "", log.LstdFlags|log.Lshortfile)
+	logger.Println("Initialization complete")
+    logger.Println(conf)
 }
 
 func initGocui() {
 	g, err := gocui.NewGui(gocui.OutputNormal)
 	if err != nil {
-		logger.Log.Panicln(err)
+		logger.Panicln(err)
 	}
 	defer g.Close()
 
@@ -55,20 +74,20 @@ func initGocui() {
 
 	g.SetManagerFunc(layout)
 
-	if err := initKeybindings(g); err != nil {
-		logger.Log.Panicln(err)
+	if err := initKeybindings(g, conf.Keybinds); err != nil {
+		logger.Panicln(err)
 	}
 
 	if err := newView(g); err != nil {
-		logger.Log.Panicln(err)
+		logger.Panicln(err)
 	}
 
 	if err = panels.MakePrompt(g); err != nil {
-		logger.Log.Panicln(err)
+		logger.Panicln(err)
 	}
 
 	if err := g.MainLoop(); err != nil && err != gocui.ErrQuit {
-		logger.Log.Panicln(err)
+		logger.Panicln(err)
 	}
 }
 
@@ -76,7 +95,7 @@ func initBot() (*discordgo.Session, error) {
 
 	dg, err := discordgo.New(token)
 	if err != nil {
-		logger.Log.Println("error creating Discord session,", err)
+		logger.Println("error creating Discord session,", err)
 		return nil, err
 	}
 
@@ -85,7 +104,7 @@ func initBot() (*discordgo.Session, error) {
 
 	err = dg.Open()
 	if err != nil {
-		logger.Log.Println("error opening connection,", err)
+		logger.Println("error opening connection,", err)
 		return nil, err
 	}
 	return dg, nil
@@ -94,7 +113,7 @@ func initBot() (*discordgo.Session, error) {
 func main() {
 	dg, err := initBot()
 	if err != nil {
-		logger.Log.Println(err)
+		logger.Println(err)
 	} else {
 		defer dg.Close()
 	}
@@ -140,15 +159,27 @@ func layout(g *gocui.Gui) error {
 	return nil
 }
 
-func initKeybindings(g *gocui.Gui, keybindings []keybind) error {
-    for _, key := range keybindings {
-        switch keybind.name {
-            case "viewUp":
-                if err := g.SetKeybinding(keybind.view, keybind.key, keybind.mod, moveViewUp) {
-                    return err
-                }
-        }
-    }
+func initKeybindings(g *gocui.Gui, keybindings []Keybind) error {
+	for _, key := range keybindings {
+		switch key.Name {
+		case "viewUp":
+			if err := g.SetKeybinding(key.View, key.Key, key.Mod, moveViewUp); err != nil {
+				return err
+			}
+		case "viewDown":
+			if err := g.SetKeybinding(key.View, key.Key, key.Mod, moveViewDown); err != nil {
+				return err
+			}
+		case "viewLeft":
+			if err := g.SetKeybinding(key.View, key.Key, key.Mod, moveViewLeft); err != nil {
+				return err
+			}
+		case "viewRight":
+			if err := g.SetKeybinding(key.View, key.Key, key.Mod, moveViewRight); err != nil {
+				return err
+			}
+		}
+	}
 	if err := g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone,
 		func(g *gocui.Gui, v *gocui.View) error {
 			return gocui.ErrQuit
@@ -170,30 +201,6 @@ func initKeybindings(g *gocui.Gui, keybindings []keybind) error {
 	if err := g.SetKeybinding("", gocui.KeyTab, gocui.ModNone,
 		func(g *gocui.Gui, v *gocui.View) error {
 			return nextView(g, true)
-		}); err != nil {
-		return err
-	}
-	if err := g.SetKeybinding("", gocui.KeyArrowLeft, gocui.ModNone,
-		func(g *gocui.Gui, v *gocui.View) error {
-			return moveView(g, v, -delta, 0)
-		}); err != nil {
-		return err
-	}
-	if err := g.SetKeybinding("", gocui.KeyArrowRight, gocui.ModNone,
-		func(g *gocui.Gui, v *gocui.View) error {
-			return moveView(g, v, delta, 0)
-		}); err != nil {
-		return err
-	}
-	if err := g.SetKeybinding("", gocui.KeyArrowDown, gocui.ModNone,
-		func(g *gocui.Gui, v *gocui.View) error {
-			return moveView(g, v, 0, delta)
-		}); err != nil {
-		return err
-	}
-	if err := g.SetKeybinding("", gocui.KeyArrowUp, gocui.ModNone,
-		func(g *gocui.Gui, v *gocui.View) error {
-			return moveView(g, v, 0, -delta)
 		}); err != nil {
 		return err
 	}
@@ -262,15 +269,50 @@ func nextView(g *gocui.Gui, disableCurrent bool) error {
 	return nil
 }
 
-func moveView(g *gocui.Gui, v *gocui.View, dx, dy int) error {
+func moveViewUp(g *gocui.Gui, v *gocui.View) error {
 	name := v.Name()
 	x0, y0, x1, y1, err := g.ViewPosition(name)
 	if err != nil {
 		return err
 	}
-	if _, err := g.SetView(name, x0+dx, y0+dy, x1+dx, y1+dy); err != nil {
+	if _, err := g.SetView(name, x0, y0-delta, x1, y1-delta); err != nil {
 		return err
 	}
 	return nil
 }
 
+func moveViewDown(g *gocui.Gui, v *gocui.View) error {
+	name := v.Name()
+	x0, y0, x1, y1, err := g.ViewPosition(name)
+	if err != nil {
+		return err
+	}
+	if _, err := g.SetView(name, x0, y0+delta, x1, y1+delta); err != nil {
+		return err
+	}
+	return nil
+}
+
+func moveViewLeft(g *gocui.Gui, v *gocui.View) error {
+	name := v.Name()
+	x0, y0, x1, y1, err := g.ViewPosition(name)
+	if err != nil {
+		return err
+	}
+	if _, err := g.SetView(name, x0-delta, y0, x1-delta, y1); err != nil {
+		return err
+	}
+	return nil
+}
+
+func moveViewRight(g *gocui.Gui, v *gocui.View) error {
+	name := v.Name()
+	x0, y0, x1, y1, err := g.ViewPosition(name)
+	if err != nil {
+		return err
+	}
+	if _, err := g.SetView(name, x0+delta, y0, x1+delta, y1); err != nil {
+		return err
+	}
+	return nil
+}

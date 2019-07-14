@@ -161,21 +161,25 @@ func layout(g *gocui.Gui) error {
 
 func initKeybindings(g *gocui.Gui, keybindings []Keybind) error {
 	for _, key := range keybindings {
+        // simulates ternary operator. 
+        // if we are between 32 and 127 non inclusive gocui expects a rune
+        // otherwise it takes a uint16
+        tern := map[bool]interface{}{true: rune(key.Key), false: key.Key} [key.Key > 32 && key.Key < 127]
 		switch key.Name {
 		case "viewUp":
-			if err := g.SetKeybinding(key.View, key.Key, key.Mod, moveViewUp); err != nil {
+			if err := g.SetKeybinding(key.View, tern, key.Mod, moveViewUp); err != nil {
 				return err
 			}
 		case "viewDown":
-			if err := g.SetKeybinding(key.View, key.Key, key.Mod, moveViewDown); err != nil {
+			if err := g.SetKeybinding(key.View, tern, key.Mod, moveViewDown); err != nil {
 				return err
 			}
 		case "viewLeft":
-			if err := g.SetKeybinding(key.View, key.Key, key.Mod, moveViewLeft); err != nil {
+			if err := g.SetKeybinding(key.View, tern, key.Mod, moveViewLeft); err != nil {
 				return err
 			}
 		case "viewRight":
-			if err := g.SetKeybinding(key.View, key.Key, key.Mod, moveViewRight); err != nil {
+            if err := g.SetKeybinding(key.View, tern, key.Mod, moveViewRight); err != nil {
 				return err
 			}
 		}

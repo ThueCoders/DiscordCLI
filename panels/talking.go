@@ -31,7 +31,7 @@ func MakePrompt(g *gocui.Gui) error {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
-		v.Frame = false
+		v.Frame = true
 		v.Editable = true
 		v.Wrap = false
 		v.Editor = gocui.EditorFunc(promptEditor)
@@ -85,5 +85,7 @@ func promptEditor(v *gocui.View, key gocui.Key, ch rune, mod gocui.Modifier) {
 		v.MoveCursor(-1, 0, false)
 	case gocui.KeyArrowRight:
 		v.MoveCursor(1, 0, false)
+    case gocui.KeyCtrlD:
+        break;
 	}
 }

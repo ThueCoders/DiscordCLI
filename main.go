@@ -27,8 +27,8 @@ var (
 
 	dg *discordgo.Session
 
-	views   = []string{}
-	curView = -1
+	views   = []string{"Input"}
+	curView = 0
 	idxView = 0
 )
 
@@ -78,11 +78,11 @@ func initGocui() {
 		logger.Panicln(err)
 	}
 
-	if err := newView(g); err != nil {
+	if err = panels.MakePrompt(g); err != nil {
 		logger.Panicln(err)
 	}
 
-	if err = panels.MakePrompt(g); err != nil {
+	if err := newView(g, nil); err != nil {
 		logger.Panicln(err)
 	}
 
@@ -165,67 +165,33 @@ func initKeybindings(g *gocui.Gui, keybindings []Keybind) error {
         // if we are between 32 and 127 non inclusive gocui expects a rune
         // otherwise it takes a uint16
         tern := map[bool]interface{}{true: rune(key.Key), false: key.Key} [key.Key > 32 && key.Key < 127]
+        var handlerFunc func(*gocui.Gui, *gocui.View) error;
 		switch key.Name {
-		case "viewUp":
-			if err := g.SetKeybinding(key.View, tern, key.Mod, moveViewUp); err != nil {
-				return err
-			}
-		case "viewDown":
-			if err := g.SetKeybinding(key.View, tern, key.Mod, moveViewDown); err != nil {
-				return err
-			}
-		case "viewLeft":
-			if err := g.SetKeybinding(key.View, tern, key.Mod, moveViewLeft); err != nil {
-				return err
-			}
-		case "viewRight":
-            if err := g.SetKeybinding(key.View, tern, key.Mod, moveViewRight); err != nil {
-				return err
-			}
-		}
-	}
-	if err := g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone,
-		func(g *gocui.Gui, v *gocui.View) error {
-			return gocui.ErrQuit
-		}); err != nil {
-		return err
-	}
-	if err := g.SetKeybinding("", gocui.KeySpace, gocui.ModNone,
-		func(g *gocui.Gui, v *gocui.View) error {
-			return newView(g)
-		}); err != nil {
-		return err
-	}
-	if err := g.SetKeybinding("", gocui.KeyCtrlD, gocui.ModNone,
-		func(g *gocui.Gui, v *gocui.View) error {
-			return delView(g)
-		}); err != nil {
-		return err
-	}
-	if err := g.SetKeybinding("", gocui.KeyTab, gocui.ModNone,
-		func(g *gocui.Gui, v *gocui.View) error {
-			return nextView(g, true)
-		}); err != nil {
-		return err
-	}
-	if err := g.SetKeybinding("", 't', gocui.ModNone,
-		func(g *gocui.Gui, v *gocui.View) error {
-			_, err := g.SetViewOnTop(views[curView])
-			return err
-		}); err != nil {
-		return err
-	}
-	if err := g.SetKeybinding("", 'b', gocui.ModNone,
-		func(g *gocui.Gui, v *gocui.View) error {
-			_, err := g.SetViewOnBottom(views[curView])
-			return err
-		}); err != nil {
-		return err
+		case "movePanelUp":
+            handlerFunc = moveViewUp
+		case "movePanelDown":
+            handlerFunc = moveViewDown
+		case "movePanelLeft":
+            handlerFunc = moveViewLeft
+		case "movePanelRight":
+            handlerFunc = moveViewRight
+		case "quit":
+            handlerFunc = quit
+		case "switchPanel":
+            handlerFunc = nextView
+		case "deletePanel":
+            handlerFunc = delView
+		case "createPanel":
+            handlerFunc = newView
+        }
+        if err := g.SetKeybinding(key.View, tern, key.Mod, handlerFunc); err != nil {
+            return err
+        }
 	}
 	return nil
 }
 
-func newView(g *gocui.Gui) error {
+func newView(g *gocui.Gui, v *gocui.View) error {
 	maxX, maxY := g.Size()
 	name := fmt.Sprintf("v%v", idxView)
 	v, err := g.SetView(name, maxX/2-5, maxY/2-5, maxX/2+5, maxY/2+5)
@@ -246,7 +212,7 @@ func newView(g *gocui.Gui) error {
 	return nil
 }
 
-func delView(g *gocui.Gui) error {
+func delView(g *gocui.Gui, v *gocui.View) error {
 	if len(views) <= 1 {
 		return nil
 	}
@@ -256,10 +222,14 @@ func delView(g *gocui.Gui) error {
 	}
 	views = append(views[:curView], views[curView+1:]...)
 
-	return nextView(g, false)
+	return nextView(g, nil)
 }
 
-func nextView(g *gocui.Gui, disableCurrent bool) error {
+func quit(g *gocui.Gui, v *gocui.View) error {
+    return gocui.ErrQuit
+}
+
+func nextView(g *gocui.Gui, v *gocui.View) error {
 	next := curView + 1
 	if next > len(views)-1 {
 		next = 0

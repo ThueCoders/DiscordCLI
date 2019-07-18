@@ -1,10 +1,10 @@
 package panels
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/jroimartin/gocui"
-    "github.com/ThueCoders/DiscordCLI/color"
+	"github.com/ThueCoders/DiscordCLI/color"
+	"github.com/jroimartin/gocui"
 )
 
 const (
@@ -85,7 +85,7 @@ func promptEditor(v *gocui.View, key gocui.Key, ch rune, mod gocui.Modifier) {
 		v.MoveCursor(-1, 0, false)
 	case gocui.KeyArrowRight:
 		v.MoveCursor(1, 0, false)
-    case gocui.KeyCtrlD:
-        break;
+	case gocui.KeyCtrlD:
+		break
 	}
 }

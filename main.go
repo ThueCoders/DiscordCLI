@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 
 	"github.com/ThueCoders/DiscordCLI/panels"
+    "github.com/ThueCoders/DiscordCLI/logger"
 	"github.com/ThueCoders/discordgo"
 	"github.com/jroimartin/gocui"
 	toml "github.com/pelletier/go-toml"
@@ -22,8 +23,6 @@ var (
 	conf Config
 
 	token string
-
-	logger *log.Logger
 
 	dg *discordgo.Session
 
@@ -57,15 +56,15 @@ func init() {
 	if err1 != nil {
 		log.Println(err1)
 	}
-	logger = log.New(file, "", log.LstdFlags|log.Lshortfile)
-	logger.Println("Initialization complete")
-    logger.Println(conf)
+    logger.Init(file)
+	logger.Log.Println("Initialization complete")
+	logger.Log.Println(conf)
 }
 
 func initGocui() {
 	g, err := gocui.NewGui(gocui.OutputNormal)
 	if err != nil {
-		logger.Panicln(err)
+		logger.Log.Panicln(err)
 	}
 	defer g.Close()
 
@@ -75,19 +74,19 @@ func initGocui() {
 	g.SetManagerFunc(layout)
 
 	if err := initKeybindings(g, conf.Keybinds); err != nil {
-		logger.Panicln(err)
+		logger.Log.Panicln(err)
 	}
 
 	if err = panels.MakePrompt(g); err != nil {
-		logger.Panicln(err)
+		logger.Log.Panicln(err)
 	}
 
-	if err := newView(g, nil); err != nil {
-		logger.Panicln(err)
-	}
+	// if err := newView(g, nil); err != nil {
+		// logger.Log.Panicln(err)
+	// }
 
 	if err := g.MainLoop(); err != nil && err != gocui.ErrQuit {
-		logger.Panicln(err)
+		logger.Log.Panicln(err)
 	}
 }
 
@@ -95,7 +94,7 @@ func initBot() (*discordgo.Session, error) {
 
 	dg, err := discordgo.New(token)
 	if err != nil {
-		logger.Println("error creating Discord session,", err)
+		logger.Log.Println("error creating Discord session,", err)
 		return nil, err
 	}
 
@@ -104,7 +103,7 @@ func initBot() (*discordgo.Session, error) {
 
 	err = dg.Open()
 	if err != nil {
-		logger.Println("error opening connection,", err)
+		logger.Log.Println("error opening connection,", err)
 		return nil, err
 	}
 	return dg, nil
@@ -113,7 +112,7 @@ func initBot() (*discordgo.Session, error) {
 func main() {
 	dg, err := initBot()
 	if err != nil {
-		logger.Println(err)
+		logger.Log.Println(err)
 	} else {
 		defer dg.Close()
 	}
@@ -138,55 +137,42 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 // func channelUpdate(s *discordgo.Session, c *discordgo.ChannelUpdate) {}
 
+// TODO: load from save state if one exists. Put the save state file path in config
 func layout(g *gocui.Gui) error {
-	maxX, _ := g.Size()
-	v, err := g.SetView("help", maxX-25, 0, maxX-1, 9)
-	v0, err := g.SetView("test", 50, 0, maxX-50, 9)
-	if err != nil {
-		if err != gocui.ErrUnknownView {
-			return err
-		}
-		fmt.Fprintln(v, "KEYBINDINGS")
-		fmt.Fprintln(v, "Space: New View")
-		fmt.Fprintln(v, "Tab: Next View")
-		fmt.Fprintln(v, "← ↑ → ↓: Move View")
-		fmt.Fprintln(v, "^D: Delete View")
-		fmt.Fprintln(v, "t: Set view on top")
-		fmt.Fprintln(v, "b: Set view on bottom")
-		fmt.Fprintln(v, "^C: Exit")
-		fmt.Fprintln(v0, "test")
+	if err := panels.LoadDefaultPanels(g); err != nil {
+		return err
 	}
-	return nil
+    return nil
 }
 
 func initKeybindings(g *gocui.Gui, keybindings []Keybind) error {
 	for _, key := range keybindings {
-        // simulates ternary operator. 
-        // if we are between 32 and 127 non inclusive gocui expects a rune
-        // otherwise it takes a uint16
-        tern := map[bool]interface{}{true: rune(key.Key), false: key.Key} [key.Key > 32 && key.Key < 127]
-        var handlerFunc func(*gocui.Gui, *gocui.View) error;
+		// simulates ternary operator.
+		// if we are between 32 and 127 non inclusive gocui expects a rune
+		// otherwise it takes a uint16
+		tern := map[bool]interface{}{true: rune(key.Key), false: key.Key}[key.Key > 32 && key.Key < 127]
+		var handlerFunc func(*gocui.Gui, *gocui.View) error
 		switch key.Name {
 		case "movePanelUp":
-            handlerFunc = moveViewUp
+			handlerFunc = moveViewUp
 		case "movePanelDown":
-            handlerFunc = moveViewDown
+			handlerFunc = moveViewDown
 		case "movePanelLeft":
-            handlerFunc = moveViewLeft
+			handlerFunc = moveViewLeft
 		case "movePanelRight":
-            handlerFunc = moveViewRight
+			handlerFunc = moveViewRight
 		case "quit":
-            handlerFunc = quit
+			handlerFunc = quit
 		case "switchPanel":
-            handlerFunc = nextView
+			handlerFunc = nextView
 		case "deletePanel":
-            handlerFunc = delView
+			handlerFunc = delView
 		case "createPanel":
-            handlerFunc = newView
-        }
-        if err := g.SetKeybinding(key.View, tern, key.Mod, handlerFunc); err != nil {
-            return err
-        }
+			handlerFunc = newView
+		}
+		if err := g.SetKeybinding(key.View, tern, key.Mod, handlerFunc); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -226,7 +212,7 @@ func delView(g *gocui.Gui, v *gocui.View) error {
 }
 
 func quit(g *gocui.Gui, v *gocui.View) error {
-    return gocui.ErrQuit
+	return gocui.ErrQuit
 }
 
 func nextView(g *gocui.Gui, v *gocui.View) error {

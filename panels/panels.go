@@ -1,7 +1,7 @@
 package panels
 
 import (
-	"fmt"
+    "fmt"
 	"github.com/jroimartin/gocui"
     "github.com/ThueCoders/DiscordCLI/logger"
 )
